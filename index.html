@@ -1,0 +1,1626 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>河北非遗数字展馆 - 3D模型展示</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; overflow: hidden; background: #0a0a0f; color: #fff; }
+        #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+
+        .header {
+            position: fixed; top: 0; left: 0; right: 0; height: 64px;
+            background: #0a0a0f;
+            z-index: 100; display: flex; align-items: center; padding: 0 30px;
+            border-bottom: 1px solid rgba(201,169,110,0.15);
+        }
+        .logo { display: flex; align-items: center; gap: 12px; }
+        .logo-icon {
+            width: 38px; height: 38px;
+            background: linear-gradient(135deg, #c9a96e, #8b6914);
+            border-radius: 8px; display: flex; align-items: center; justify-content: center;
+            font-size: 20px; box-shadow: 0 2px 12px rgba(201,169,110,0.3);
+        }
+        .logo-text {
+            font-size: 22px; font-weight: 600;
+            background: linear-gradient(90deg, #c9a96e, #f0d78c, #c9a96e);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            letter-spacing: 4px;
+        }
+        .header-sub {
+            margin-left: auto; font-size: 13px; color: rgba(201,169,110,0.6);
+            letter-spacing: 2px;
+        }
+
+        .model-panel {
+            position: fixed; left: 20px; top: 50%; transform: translateY(-50%);
+            z-index: 100; display: flex; flex-direction: column; gap: 8px;
+        }
+        .model-btn {
+            width: 56px; height: 56px; border-radius: 12px;
+            border: 1px solid rgba(201,169,110,0.25); background: rgba(15,15,25,0.85);
+            backdrop-filter: blur(10px); cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; transition: all 0.3s ease; position: relative;
+        }
+        .model-btn:hover {
+            border-color: rgba(201,169,110,0.6);
+            background: rgba(201,169,110,0.1);
+            transform: scale(1.08);
+        }
+        .model-btn.active {
+            border-color: #c9a96e;
+            background: rgba(201,169,110,0.15);
+            box-shadow: 0 0 20px rgba(201,169,110,0.2);
+        }
+        .model-btn .tooltip {
+            position: absolute; left: 68px; top: 50%; transform: translateY(-50%);
+            background: rgba(15,15,25,0.95); border: 1px solid rgba(201,169,110,0.3);
+            padding: 6px 14px; border-radius: 8px; white-space: nowrap;
+            font-size: 13px; color: #c9a96e; opacity: 0; pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        .model-btn:hover .tooltip { opacity: 1; }
+
+        .info-panel {
+            position: fixed; right: 24px; top: 50%; transform: translateY(-50%);
+            z-index: 100; width: 320px;
+            background: rgba(12,12,20,0.9); backdrop-filter: blur(16px);
+            border: 1px solid rgba(201,169,110,0.2); border-radius: 16px;
+            padding: 28px; transition: all 0.4s ease;
+        }
+        .info-tag {
+            display: inline-block; padding: 3px 10px; border-radius: 4px;
+            background: rgba(201,169,110,0.15); color: #c9a96e;
+            font-size: 11px; letter-spacing: 1px; margin-bottom: 12px;
+        }
+        .info-title {
+            font-size: 24px; font-weight: 700; margin-bottom: 6px;
+            background: linear-gradient(90deg, #f0d78c, #c9a96e);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .info-subtitle {
+            font-size: 13px; color: rgba(255,255,255,0.4); margin-bottom: 16px;
+            letter-spacing: 1px;
+        }
+        .info-desc {
+            font-size: 14px; line-height: 1.8; color: rgba(255,255,255,0.7);
+            margin-bottom: 20px;
+        }
+        .info-meta {
+            display: flex; flex-direction: column; gap: 8px;
+            padding-top: 16px; border-top: 1px solid rgba(201,169,110,0.1);
+        }
+        .meta-row {
+            display: flex; justify-content: space-between; font-size: 13px;
+        }
+        .meta-label { color: rgba(255,255,255,0.4); }
+        .meta-value { color: #c9a96e; }
+
+        .hint {
+            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+            z-index: 100; font-size: 12px; color: rgba(255,255,255,0.3);
+            letter-spacing: 1px;
+        }
+
+        .embed-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 50;
+            overflow: hidden;
+        }
+
+        .embed-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .embed-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 32px;
+            height: 32px;
+            background: rgba(15,15,25,0.9);
+            border: 1px solid rgba(201,169,110,0.3);
+            border-radius: 8px;
+            color: #c9a96e;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 60;
+        }
+
+        .embed-close:hover {
+            background: rgba(201,169,110,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+
+    <div class="header">
+        <div class="logo">
+            <div class="logo-icon">🏛</div>
+            <div class="logo-text">河北非遗数字展馆</div>
+        </div>
+        <div class="header-sub">HEBEI INTANGIBLE HERITAGE</div>
+    </div>
+
+    <div class="model-panel" id="modelPanel"></div>
+
+    <div class="info-panel" id="infoPanel">
+        <div class="info-tag">国家级非遗</div>
+        <div class="info-title" id="infoTitle">定瓷</div>
+        <div class="info-subtitle" id="infoSubtitle">Ding Porcelain</div>
+        <div class="info-desc" id="infoDesc"></div>
+        <div class="info-meta">
+            <div class="meta-row"><span class="meta-label">产地</span><span class="meta-value" id="metaOrigin">-</span></div>
+            <div class="meta-row"><span class="meta-label">类别</span><span class="meta-value" id="metaCategory">-</span></div>
+            <div class="meta-row"><span class="meta-label">批次</span><span class="meta-value" id="metaBatch">-</span></div>
+            <div class="meta-row"><span class="meta-label">编号</span><span class="meta-value" id="metaCode">-</span></div>
+        </div>
+    </div>
+
+    <div class="hint">🖱 拖拽旋转 · 滚轮缩放 · 右键平移</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+
+    <script>
+    // ===== 河北非遗展品数据 =====
+    const exhibits = [
+        {
+            name: '定窑', en: 'Ding Ware', icon: '🏺', tag: '国家级非遗',
+            origin: '河北曲阳', category: '传统技艺', batch: '第一批', code: 'Ⅷ-7',
+            desc: '定窑是宋代五大名窑之一，位于河北省曲阳县。定瓷以白瓷著称，胎质细腻坚致，釉色白中微黄，温润如玉。其刻花、印花装饰精美绝伦，尤以印花龙纹盘、刻花梅瓶等器物为代表作。',
+            isEmbed: true,
+            embedUrl: 'https://www.51jianmo.com/newModel/?code=P00000000000202A43TX9&desc=0&icon=0&type=1&quick=0&opacity=1&full=1&isxcx=0&iconbj=0'
+        },
+        {
+            name: '辛集玉雕', en: 'Xinji Jade Carving', icon: '💎', tag: '省级非遗',
+            origin: '河北辛集', category: '传统技艺', batch: '省级', code: '—',
+            desc: '辛集玉雕是河北省辛集市的传统雕刻技艺，历史悠久，技艺精湛。辛集玉雕以玉石为主要材料，经过选料、设计、雕刻、打磨等工序，制作出精美的玉器作品。作品题材丰富，造型优美，工艺精细，体现了北方玉雕的独特风格。',
+            isEmbed: true,
+            embedUrl: 'https://www.51jianmo.com/newModel/?code=P00000000000201A41LTU&desc=0&icon=0&type=1&quick=0&opacity=1&full=1&isxcx=0&iconbj=0'
+        },
+        {
+            name: '皮影戏', en: 'Shadow Puppetry', icon: '🎭', tag: '国家级非遗',
+            origin: '河北唐山', category: '传统戏剧', batch: '第一批', code: 'Ⅳ-4',
+            desc: '皮影戏是中国民间古老的传统艺术，用兽皮或纸板做成的人物剪影以表演故事。唐山皮影是北方皮影戏的重要流派，造型夸张，雕刻精细，色彩鲜艳。',
+            isGLB: true,
+            modelPath: '皮影.glb'
+        },
+        {
+            name: '河北错金银錾刻技艺', en: 'Hebei Gold & Silver Inlay', icon: '✨', tag: '国家级非遗',
+            origin: '河北', category: '传统技艺', batch: '第四批', code: 'Ⅷ-210',
+            desc: '错金银錾刻是中国古代金属工艺中的瑰宝，河北地区传承的错金银技艺历史悠久。工匠以金银丝或金银片镶嵌于青铜器或铁器表面，再经錾刻、打磨等工序，使金银纹饰与器物浑然一体，呈现出富丽堂皇的艺术效果。',
+            isEmbed: true,
+            embedUrl: 'https://www.51jianmo.com/newModel/?code=P00000000000201A44GIH&desc=0&icon=0&type=1&quick=0&opacity=1&full=1&isxcx=0&iconbj=0'
+        },
+        {
+            name: '曲阳石雕', en: 'Quyang Stone Carving', icon: '🗿', tag: '国家级非遗',
+            origin: '河北曲阳', category: '传统技艺', batch: '第一批', code: 'Ⅶ-34',
+            desc: '曲阳石雕历史悠久，始于汉代，盛于唐代，是中国石雕艺术的重要流派。曲阳石雕以汉白玉为主要材料，雕刻技艺精湛，作品题材广泛，涵盖人物、动物、建筑构件等，造型生动传神，线条流畅优美，是中华石刻艺术的杰出代表。',
+            isOBJ: true,
+            modelPath: '3d66.com_JCI54559873285.obj'
+        }
+    ];
+
+    let scene, camera, renderer, controls;
+    let currentModelGroup = null;
+    let currentIndex = 0;
+    let particleSystem;
+    const clock = new THREE.Clock();
+
+    // ===== 初始化 =====
+    function init() {
+        const container = document.getElementById('canvas-container');
+
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x0a0a0f, 0.012);
+
+        camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(3, 2.5, 5);
+
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.minDistance = 1.5;
+        controls.maxDistance = 15;
+        controls.target.set(0, 0.8, 0);
+        controls.update();
+
+        setupLights();
+        createGround();
+        createParticles();
+        createButtons();
+        showModel(0);
+
+        window.addEventListener('resize', onResize);
+        animate();
+    }
+
+    function setupLights() {
+        // 环境光 - 更亮
+        scene.add(new THREE.AmbientLight(0x606070, 0.8));
+
+        // 主光源 - 更亮
+        const mainLight = new THREE.DirectionalLight(0xfff8f0, 2.0);
+        mainLight.position.set(5, 10, 5);
+        mainLight.castShadow = true;
+        mainLight.shadow.mapSize.set(2048, 2048);
+        scene.add(mainLight);
+
+        // 补光 - 更亮
+        const fillLight = new THREE.DirectionalLight(0xaaccff, 0.8);
+        fillLight.position.set(-5, 5, -5);
+        scene.add(fillLight);
+
+        // 底部光 - 更亮
+        const bottomLight = new THREE.PointLight(0xffd700, 1.2, 20);
+        bottomLight.position.set(0, -0.5, 0);
+        scene.add(bottomLight);
+
+        // 背光 - 更亮
+        const backLight = new THREE.PointLight(0x6688cc, 0.6, 25);
+        backLight.position.set(-3, 5, -5);
+        scene.add(backLight);
+
+        // 新增：顶部聚光灯
+        const spotLight = new THREE.SpotLight(0xffffff, 1.5);
+        spotLight.position.set(0, 8, 0);
+        spotLight.target.position.set(0, 0, 0);
+        spotLight.angle = Math.PI / 6;
+        spotLight.penumbra = 0.3;
+        spotLight.castShadow = true;
+        scene.add(spotLight);
+        scene.add(spotLight.target);
+
+        // 新增：侧面补光
+        const sideLight = new THREE.DirectionalLight(0xffeecc, 0.8);
+        sideLight.position.set(5, 3, -5);
+        scene.add(sideLight);
+    }
+
+    function createGround() {
+        const platformGeo = new THREE.CylinderGeometry(2.5, 2.8, 0.15, 64);
+        const platformMat = new THREE.MeshPhysicalMaterial({
+            color: 0x1a1a2e, metalness: 0.3, roughness: 0.4,
+            clearcoat: 0.8, clearcoatRoughness: 0.2,
+        });
+        const platform = new THREE.Mesh(platformGeo, platformMat);
+        platform.position.y = -0.075;
+        platform.receiveShadow = true;
+        scene.add(platform);
+
+        const ringGeo = new THREE.TorusGeometry(2.65, 0.02, 8, 128);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0xc9a96e, transparent: true, opacity: 0.6 });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.y = 0.01;
+        scene.add(ring);
+
+        const groundGeo = new THREE.PlaneGeometry(100, 100);
+        const groundMat = new THREE.MeshStandardMaterial({ color: 0x080810, roughness: 0.9, metalness: 0.1 });
+        const ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = -0.15;
+        ground.receiveShadow = true;
+        scene.add(ground);
+    }
+
+    function createParticles() {
+        const count = 500;
+        const positions = new Float32Array(count * 3);
+        const colors = new Float32Array(count * 3);
+        for (let i = 0; i < count; i++) {
+            positions[i * 3] = (Math.random() - 0.5) * 30;
+            positions[i * 3 + 1] = Math.random() * 15;
+            positions[i * 3 + 2] = (Math.random() - 0.5) * 30;
+            const gold = Math.random() > 0.5;
+            colors[i * 3] = gold ? 0.79 : 0.4;
+            colors[i * 3 + 1] = gold ? 0.66 : 0.5;
+            colors[i * 3 + 2] = gold ? 0.43 : 0.8;
+        }
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        const mat = new THREE.PointsMaterial({
+            size: 0.05, vertexColors: true, transparent: true, opacity: 0.6,
+            blending: THREE.AdditiveBlending, depthWrite: false,
+        });
+        particleSystem = new THREE.Points(geo, mat);
+        scene.add(particleSystem);
+    }
+
+    // ===== 写实风格模型构建函数 =====
+
+    // 1. 定瓷 - 写实白瓷梅瓶
+    function buildDingVase() {
+        const group = new THREE.Group();
+
+        // 更精细的梅瓶轮廓 - 基于真实宋代梅瓶造型
+        const points = [];
+        const segments = 80;
+        for (let i = 0; i <= segments; i++) {
+            const t = i / segments;
+            let r;
+            // 底足
+            if (t < 0.03) r = 0.28 + t * 10;
+            // 底部外撇
+            else if (t < 0.08) r = 0.58 + (t - 0.03) * 3;
+            // 腹部鼓起
+            else if (t < 0.45) r = 0.73 + Math.sin((t - 0.08) / 0.37 * Math.PI) * 0.18;
+            // 收肩
+            else if (t < 0.55) r = 0.91 - (t - 0.45) * 3.2;
+            // 细长颈部
+            else if (t < 0.75) r = 0.59 - (t - 0.55) * 1.8;
+            // 口沿外撇
+            else if (t < 0.88) r = 0.23 + (t - 0.75) * 0.3;
+            // 口沿外翻
+            else r = 0.27 + (t - 0.88) * 1.5;
+            
+            points.push(new THREE.Vector2(Math.max(0.005, r), t * 3.2 - 0.3));
+        }
+
+        const geo = new THREE.LatheGeometry(points, 128);
+        
+        // 写实瓷器材质
+        const mat = new THREE.MeshPhysicalMaterial({
+            color: 0xf8f4ed,
+            metalness: 0.02,
+            roughness: 0.08,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.02,
+            reflectivity: 1.0,
+        });
+        
+        const vase = new THREE.Mesh(geo, mat);
+        vase.castShadow = true;
+        vase.receiveShadow = true;
+        group.add(vase);
+
+        // 添加刻花装饰 - 浮雕效果
+        const decorY = [0.8, 1.2, 1.6];
+        decorY.forEach((y, idx) => {
+            const radius = 0.75 - idx * 0.05;
+            // 主装饰带
+            const ringGeo = new THREE.TorusGeometry(radius, 0.012, 12, 128);
+            const ringMat = new THREE.MeshStandardMaterial({ 
+                color: 0xe8e0d5, 
+                roughness: 0.15,
+                metalness: 0.05
+            });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.position.y = y;
+            ring.rotation.x = Math.PI / 2;
+            group.add(ring);
+
+            // 辅助装饰线
+            const subRingGeo = new THREE.TorusGeometry(radius, 0.005, 8, 128);
+            const subRing = new THREE.Mesh(subRingGeo, ringMat);
+            subRing.position.y = y + 0.06;
+            subRing.rotation.x = Math.PI / 2;
+            group.add(subRing);
+        });
+
+        // 底部圈足
+        const footGeo = new THREE.CylinderGeometry(0.32, 0.35, 0.08, 64);
+        const footMat = new THREE.MeshStandardMaterial({ 
+            color: 0xe0d8cc, 
+            roughness: 0.3 
+        });
+        const foot = new THREE.Mesh(footGeo, footMat);
+        foot.position.y = -0.26;
+        foot.castShadow = true;
+        group.add(foot);
+
+        group.position.y = 0.6;
+        return group;
+    }
+
+    // 2. 武强年画 - 3D卷轴形式
+    function buildNewYearPrint() {
+        const group = new THREE.Group();
+
+        const w = 1.4, h = 2.0, t = 0.12;
+
+        // 画轴（顶部）
+        const topRollerGeo = new THREE.CylinderGeometry(0.06, 0.06, w + 0.3, 32);
+        const rollerMat = new THREE.MeshPhysicalMaterial({
+            color: 0x5c3a21, roughness: 0.4, metalness: 0.1
+        });
+        const topRoller = new THREE.Mesh(topRollerGeo, rollerMat);
+        topRoller.rotation.z = Math.PI / 2;
+        topRoller.position.set(0, h/2 + 0.05, 0);
+        topRoller.castShadow = true;
+        group.add(topRoller);
+
+        // 画轴（底部）
+        const bottomRoller = new THREE.Mesh(topRollerGeo, rollerMat);
+        bottomRoller.rotation.z = Math.PI / 2;
+        bottomRoller.position.set(0, -h/2 - 0.05, 0);
+        bottomRoller.castShadow = true;
+        group.add(bottomRoller);
+
+        // 轴头装饰
+        [-1, 1].forEach(side => {
+            const endCapGeo = new THREE.SphereGeometry(0.08, 16, 16);
+            const endCapMat = new THREE.MeshStandardMaterial({ color: 0x8b6914, roughness: 0.3 });
+            
+            const topCap = new THREE.Mesh(endCapGeo, endCapMat);
+            topCap.position.set(side * (w/2 + 0.15), h/2 + 0.05, 0);
+            group.add(topCap);
+            
+            const bottomCap = new THREE.Mesh(endCapGeo, endCapMat);
+            bottomCap.position.set(side * (w/2 + 0.15), -h/2 - 0.05, 0);
+            group.add(bottomCap);
+        });
+
+        // 画框
+        const frameShape = new THREE.Shape();
+        frameShape.moveTo(-w/2, -h/2);
+        frameShape.lineTo(w/2, -h/2);
+        frameShape.lineTo(w/2, h/2);
+        frameShape.lineTo(-w/2, h/2);
+        frameShape.lineTo(-w/2, -h/2);
+        
+        const hole = new THREE.Path();
+        hole.moveTo(-w/2 + t, -h/2 + t);
+        hole.lineTo(w/2 - t, -h/2 + t);
+        hole.lineTo(w/2 - t, h/2 - t);
+        hole.lineTo(-w/2 + t, h/2 - t);
+        hole.lineTo(-w/2 + t, -h/2 + t);
+        frameShape.holes.push(hole);
+
+        const frameGeo = new THREE.ExtrudeGeometry(frameShape, { 
+            depth: 0.06, bevelEnabled: true, bevelThickness: 0.015, 
+            bevelSize: 0.015, bevelSegments: 3 
+        });
+        const frameMat = new THREE.MeshPhysicalMaterial({
+            color: 0x8b4513, roughness: 0.5, metalness: 0.1,
+        });
+        const frame = new THREE.Mesh(frameGeo, frameMat);
+        frame.position.z = -0.03;
+        frame.castShadow = true;
+        group.add(frame);
+
+        // 画面 - 高分辨率Canvas绘制
+        const canvas = document.createElement('canvas');
+        canvas.width = 1024; canvas.height = 1460;
+        const ctx = canvas.getContext('2d');
+
+        // 红色底纹
+        const gradient = ctx.createLinearGradient(0, 0, 0, 1460);
+        gradient.addColorStop(0, '#b22222');
+        gradient.addColorStop(0.5, '#cc3333');
+        gradient.addColorStop(1, '#b22222');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 1024, 1460);
+
+        // 边框装饰
+        ctx.strokeStyle = '#ffd700';
+        ctx.lineWidth = 8;
+        ctx.strokeRect(20, 20, 984, 1420);
+        ctx.lineWidth = 3;
+        ctx.strokeRect(35, 35, 954, 1390);
+
+        // 云纹背景
+        ctx.strokeStyle = 'rgba(255, 215, 0, 0.15)';
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 20; i++) {
+            ctx.beginPath();
+            ctx.arc(100 + (i % 5) * 200, 150 + Math.floor(i / 5) * 300, 80, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        // 头部光环
+        const haloGrad = ctx.createRadialGradient(512, 280, 30, 512, 280, 100);
+        haloGrad.addColorStop(0, '#ffd700');
+        haloGrad.addColorStop(0.5, '#ffaa00');
+        haloGrad.addColorStop(1, 'rgba(255, 170, 0, 0)');
+        ctx.fillStyle = haloGrad;
+        ctx.beginPath();
+        ctx.arc(512, 280, 100, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 面部
+        ctx.fillStyle = '#ffdbac';
+        ctx.beginPath();
+        ctx.ellipse(512, 320, 55, 70, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 眉毛
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(470, 295);
+        ctx.quadraticCurveTo(490, 285, 505, 295);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(519, 295);
+        ctx.quadraticCurveTo(534, 285, 554, 295);
+        ctx.stroke();
+
+        // 眼睛
+        ctx.fillStyle = '#1a1a1a';
+        ctx.beginPath();
+        ctx.ellipse(485, 315, 12, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(539, 315, 12, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(488, 313, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(542, 313, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 鼻子
+        ctx.strokeStyle = '#cc9977';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(512, 325);
+        ctx.lineTo(508, 345);
+        ctx.lineTo(516, 345);
+        ctx.stroke();
+
+        // 嘴
+        ctx.strokeStyle = '#aa2222';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(512, 365, 18, 0.1, Math.PI - 0.1);
+        ctx.stroke();
+
+        // 胡须
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 5; i++) {
+            ctx.beginPath();
+            ctx.moveTo(480 + i * 16, 375);
+            ctx.quadraticCurveTo(485 + i * 16, 420, 475 + i * 16, 460);
+            ctx.stroke();
+        }
+
+        // 头盔/头饰
+        ctx.fillStyle = '#228b22';
+        ctx.beginPath();
+        ctx.moveTo(440, 260);
+        ctx.quadraticCurveTo(512, 180, 584, 260);
+        ctx.lineTo(584, 290);
+        ctx.lineTo(440, 290);
+        ctx.closePath();
+        ctx.fill();
+        
+        // 头盔装饰
+        ctx.fillStyle = '#ffd700';
+        ctx.beginPath();
+        ctx.arc(512, 220, 15, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 身体 - 铠甲
+        const armorGrad = ctx.createLinearGradient(400, 450, 624, 450);
+        armorGrad.addColorStop(0, '#cd853f');
+        armorGrad.addColorStop(0.5, '#daa520');
+        armorGrad.addColorStop(1, '#cd853f');
+        ctx.fillStyle = armorGrad;
+        ctx.beginPath();
+        ctx.moveTo(420, 420);
+        ctx.lineTo(604, 420);
+        ctx.quadraticCurveTo(624, 550, 610, 750);
+        ctx.lineTo(414, 750);
+        ctx.quadraticCurveTo(400, 550, 420, 420);
+        ctx.fill();
+
+        // 铠甲鳞片
+        ctx.strokeStyle = '#8b6914';
+        ctx.lineWidth = 2;
+        for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 6; col++) {
+                ctx.beginPath();
+                ctx.arc(435 + col * 35, 460 + row * 35, 12, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+
+        // 护心镜
+        ctx.fillStyle = '#c0c0c0';
+        ctx.beginPath();
+        ctx.arc(512, 580, 45, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#ffd700';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        // 腰带
+        ctx.fillStyle = '#8b0000';
+        ctx.fillRect(410, 740, 204, 35);
+        ctx.fillStyle = '#ffd700';
+        ctx.fillRect(492, 740, 40, 35);
+
+        // 战裙
+        ctx.fillStyle = '#228b22';
+        ctx.beginPath();
+        ctx.moveTo(414, 775);
+        ctx.lineTo(610, 775);
+        ctx.lineTo(630, 1100);
+        ctx.lineTo(560, 1050);
+        ctx.lineTo(512, 1100);
+        ctx.lineTo(464, 1050);
+        ctx.lineTo(394, 1100);
+        ctx.closePath();
+        ctx.fill();
+
+        // 战裙褶皱
+        ctx.strokeStyle = '#1a6b1a';
+        ctx.lineWidth = 3;
+        for (let i = 1; i < 5; i++) {
+            ctx.beginPath();
+            ctx.moveTo(414 + i * 49, 775);
+            ctx.lineTo(394 + i * 59, 1100);
+            ctx.stroke();
+        }
+
+        // 飘带
+        ctx.fillStyle = '#dc143c';
+        ctx.beginPath();
+        ctx.moveTo(350, 500);
+        ctx.bezierCurveTo(280, 650, 220, 900, 180, 1200);
+        ctx.lineTo(220, 1220);
+        ctx.bezierCurveTo(260, 920, 320, 670, 380, 520);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(674, 500);
+        ctx.bezierCurveTo(744, 650, 804, 900, 844, 1200);
+        ctx.lineTo(804, 1220);
+        ctx.bezierCurveTo(764, 920, 704, 670, 644, 520);
+        ctx.closePath();
+        ctx.fill();
+
+        // "福"字
+        ctx.fillStyle = '#ffd700';
+        ctx.strokeStyle = '#8b0000';
+        ctx.lineWidth = 3;
+        ctx.font = 'bold 100px "KaiTi", "STKaiti", serif';
+        ctx.textAlign = 'center';
+        ctx.strokeText('福', 512, 1280);
+        ctx.fillText('福', 512, 1280);
+
+        // 底部文字
+        ctx.fillStyle = '#ffd700';
+        ctx.font = 'bold 30px "KaiTi", serif';
+        ctx.fillText('武强年画', 512, 1380);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.anisotropy = 16;
+        
+        const paperGeo = new THREE.PlaneGeometry(w - t*2, h - t*2);
+        const paperMat = new THREE.MeshStandardMaterial({ 
+            map: texture,
+            roughness: 0.6,
+        });
+        const paper = new THREE.Mesh(paperGeo, paperMat);
+        paper.position.z = 0.04;
+        group.add(paper);
+
+        group.rotation.y = -0.25;
+        group.position.y = 1.1;
+        return group;
+    }
+
+    // 3. 蔚县剪纸 - 多层镂空效果
+    function buildPaperCutting() {
+        const group = new THREE.Group();
+
+        // 创建多层剪纸效果
+        const layers = 3;
+        
+        for (let layer = 0; layer < layers; layer++) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024; canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+
+            const offset = layer * 0.02;
+            const scale = 1 - layer * 0.05;
+
+            // 背景
+            ctx.fillStyle = layer === 0 ? '#f5f0e8' : 'transparent';
+            ctx.fillRect(0, 0, 1024, 1024);
+
+            // 剪纸主体 - 凤凰图案
+            ctx.save();
+            ctx.translate(512, 512);
+            ctx.scale(scale, scale);
+
+            // 外层轮廓
+            ctx.strokeStyle = '#b22222';
+            ctx.fillStyle = '#cc3333';
+            ctx.lineWidth = 3;
+
+            // 凤凰身体
+            ctx.beginPath();
+            ctx.ellipse(0, 50, 80, 120, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // 凤头
+            ctx.beginPath();
+            ctx.ellipse(0, -100, 35, 45, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // 凤冠
+            ctx.fillStyle = '#ffd700';
+            for (let i = -2; i <= 2; i++) {
+                ctx.beginPath();
+                ctx.arc(i * 15, -140, 8, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // 翅膀
+            ctx.fillStyle = '#cc3333';
+            ctx.strokeStyle = '#b22222';
+            
+            // 左翼
+            ctx.beginPath();
+            ctx.moveTo(-60, 0);
+            ctx.quadraticCurveTo(-180, -80, -200, -20);
+            ctx.quadraticCurveTo(-220, 60, -150, 100);
+            ctx.quadraticCurveTo(-100, 80, -60, 40);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // 右翼
+            ctx.beginPath();
+            ctx.moveTo(60, 0);
+            ctx.quadraticCurveTo(180, -80, 200, -20);
+            ctx.quadraticCurveTo(220, 60, 150, 100);
+            ctx.quadraticCurveTo(100, 80, 60, 40);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // 尾羽
+            for (let i = -3; i <= 3; i++) {
+                if (i === 0) continue;
+                ctx.beginPath();
+                ctx.moveTo(i * 15, 150);
+                ctx.quadraticCurveTo(i * 40, 250, i * 25, 350);
+                ctx.quadraticCurveTo(i * 10, 300, i * 12, 200);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+
+            // 镂空花纹
+            ctx.fillStyle = '#f5f0e8';
+            ctx.globalCompositeOperation = 'destination-out';
+            
+            // 圆形镂空
+            for (let i = 0; i < 12; i++) {
+                const angle = (i / 12) * Math.PI * 2;
+                const x = Math.cos(angle) * 180;
+                const y = Math.sin(angle) * 180;
+                ctx.beginPath();
+                ctx.arc(x, y, 15, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // 羽毛纹理镂空
+            for (let i = 0; i < 20; i++) {
+                ctx.beginPath();
+                ctx.ellipse(-120 + i * 12, -40 + Math.sin(i) * 20, 3, 15, i * 0.1, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.restore();
+
+            // 点彩效果（蔚县剪纸特色）- 只在顶层
+            if (layer === 0) {
+                ctx.globalCompositeOperation = 'source-over';
+                const colors = ['#22aa44', '#ffdd00', '#ff6600', '#0088cc', '#ff44aa', '#9932cc'];
+                for (let i = 0; i < 150; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const dist = 100 + Math.random() * 200;
+                    const x = 512 + Math.cos(angle) * dist;
+                    const y = 512 + Math.sin(angle) * dist;
+                    
+                    ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
+                    ctx.globalAlpha = 0.5 + Math.random() * 0.3;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 4 + Math.random() * 6, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.globalAlpha = 1.0;
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            
+            const paperGeo = new THREE.PlaneGeometry(2.8, 2.8);
+            const paperMat = new THREE.MeshBasicMaterial({
+                map: texture, 
+                transparent: true, 
+                side: THREE.DoubleSide,
+                alphaTest: 0.1
+            });
+            const paper = new THREE.Mesh(paperGeo, paperMat);
+            paper.position.z = offset;
+            group.add(paper);
+        }
+
+        // 外框
+        const frameGeo = new THREE.TorusGeometry(1.5, 0.03, 8, 64);
+        const frameMat = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+        const frame = new THREE.Mesh(frameGeo, frameMat);
+        group.add(frame);
+
+        group.position.y = 1.5;
+        return group;
+    }
+
+    // 4. 磁州窑 - 写实白地黑花罐
+    function buildCizhouVase() {
+        const group = new THREE.Group();
+
+        // 写实罐形
+        const points = [];
+        const segments = 100;
+        for (let i = 0; i <= segments; i++) {
+            const t = i / segments;
+            let r;
+            
+            if (t < 0.03) r = 0.25 + t * 12;
+            else if (t < 0.08) r = 0.61;
+            else if (t < 0.15) r = 0.61 + (t - 0.08) * 2;
+            else if (t < 0.5) r = 0.75 + Math.sin((t - 0.15) / 0.35 * Math.PI) * 0.28;
+            else if (t < 0.65) r = 1.03 - (t - 0.5) * 3.2;
+            else if (t < 0.78) r = 0.55 - (t - 0.65) * 1.5;
+            else if (t < 0.88) r = 0.355 + (t - 0.78) * 0.5;
+            else r = 0.405 + (t - 0.88) * 1.2;
+            
+            points.push(new THREE.Vector2(Math.max(0.005, r), t * 2.8 - 0.25));
+        }
+
+        const geo = new THREE.LatheGeometry(points, 128);
+        const mat = new THREE.MeshPhysicalMaterial({
+            color: 0xf0ebe0,
+            metalness: 0.01,
+            roughness: 0.25,
+            clearcoat: 0.5,
+            clearcoatRoughness: 0.2,
+        });
+        
+        const jar = new THREE.Mesh(geo, mat);
+        jar.castShadow = true;
+        jar.receiveShadow = true;
+        group.add(jar);
+
+        // 黑花装饰纹理
+        const canvas = document.createElement('canvas');
+        canvas.width = 2048; canvas.height = 1024;
+        const ctx = canvas.getContext('2d');
+
+        // 白底
+        ctx.fillStyle = '#f0ebe0';
+        ctx.fillRect(0, 0, 2048, 1024);
+
+        // 上下边饰
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(0, 20, 2048, 25);
+        ctx.fillRect(0, 979, 2048, 25);
+        ctx.fillRect(0, 55, 2048, 8);
+        ctx.fillRect(0, 961, 2048, 8);
+
+        // 绘制牡丹
+        function drawPeony(x, y, scale) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+            
+            // 花瓣
+            ctx.fillStyle = '#1a1a1a';
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                ctx.beginPath();
+                ctx.ellipse(Math.cos(angle) * 40, Math.sin(angle) * 40, 35, 20, angle, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // 内层花瓣
+            for (let i = 0; i < 5; i++) {
+                const angle = (i / 5) * Math.PI * 2 + 0.3;
+                ctx.beginPath();
+                ctx.ellipse(Math.cos(angle) * 25, Math.sin(angle) * 25, 20, 12, angle, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // 花心
+            ctx.fillStyle = '#2a2a2a';
+            ctx.beginPath();
+            ctx.arc(0, 0, 15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+
+        // 绘制叶子
+        function drawLeaf(x, y, angle, scale) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            ctx.scale(scale, scale);
+            
+            ctx.fillStyle = '#1a1a1a';
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.quadraticCurveTo(30, -20, 80, 0);
+            ctx.quadraticCurveTo(30, 20, 0, 0);
+            ctx.fill();
+            
+            // 叶脉
+            ctx.strokeStyle = '#2a2a2a';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(5, 0);
+            ctx.lineTo(70, 0);
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+
+        // 主纹饰带
+        drawPeony(400, 512, 1.2);
+        drawPeony(1024, 450, 1.5);
+        drawPeony(1648, 512, 1.2);
+
+        // 叶子
+        drawLeaf(250, 512, -0.5, 1.0);
+        drawLeaf(550, 480, 0.3, 0.9);
+        drawLeaf(850, 550, -0.4, 1.1);
+        drawLeaf(1200, 480, 0.5, 0.95);
+        drawLeaf(1450, 520, -0.3, 1.0);
+        drawLeaf(1800, 500, 0.4, 0.9);
+
+        // 卷草纹
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        for (let x = 0; x < 2048; x += 50) {
+            ctx.moveTo(x, 750);
+            ctx.quadraticCurveTo(x + 25, 720 + Math.sin(x * 0.01) * 30, x + 50, 750);
+        }
+        ctx.stroke();
+
+        // 底部莲瓣纹
+        for (let i = 0; i < 16; i++) {
+            const x = 100 + i * 120;
+            ctx.fillStyle = '#1a1a1a';
+            ctx.beginPath();
+            ctx.moveTo(x, 900);
+            ctx.quadraticCurveTo(x + 30, 850, x + 60, 900);
+            ctx.lineTo(x + 60, 950);
+            ctx.quadraticCurveTo(x + 30, 920, x, 950);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.ClampToEdgeWrapping;
+        texture.anisotropy = 16;
+
+        // 贴花
+        const decalGeo = new THREE.CylinderGeometry(1.05, 1.05, 2.3, 128, 1, true);
+        const decalMat = new THREE.MeshStandardMaterial({
+            map: texture, 
+            transparent: true,
+            roughness: 0.3,
+        });
+        const decal = new THREE.Mesh(decalGeo, decalMat);
+        decal.position.y = 1.15;
+        group.add(decal);
+
+        // 底部圈足
+        const footGeo = new THREE.CylinderGeometry(0.28, 0.32, 0.1, 64);
+        const footMat = new THREE.MeshStandardMaterial({ color: 0xd0c8b8, roughness: 0.4 });
+        const foot = new THREE.Mesh(footGeo, footMat);
+        foot.position.y = -0.22;
+        foot.castShadow = true;
+        group.add(foot);
+
+        group.position.y = 0.4;
+        return group;
+    }
+
+    // 5. 吴桥杂技 - 写实顶碗人物
+    function buildAcrobatics() {
+        const group = new THREE.Group();
+
+        // 材质定义
+        const skinMat = new THREE.MeshPhysicalMaterial({
+            color: 0xffdbac, roughness: 0.5, metalness: 0.02
+        });
+        const costumeRed = new THREE.MeshPhysicalMaterial({
+            color: 0xcc2222, roughness: 0.6, metalness: 0.05
+        });
+        const costumeGold = new THREE.MeshPhysicalMaterial({
+            color: 0xffd700, roughness: 0.3, metalness: 0.3
+        });
+        const pantsBlue = new THREE.MeshPhysicalMaterial({
+            color: 0x2244aa, roughness: 0.6, metalness: 0.05
+        });
+        const bowlMat = new THREE.MeshPhysicalMaterial({
+            color: 0xf5f0e8, roughness: 0.15, metalness: 0.02,
+            clearcoat: 0.8, clearcoatRoughness: 0.05
+        });
+
+        // 头
+        const headGeo = new THREE.SphereGeometry(0.14, 32, 32);
+        const head = new THREE.Mesh(headGeo, skinMat);
+        head.position.y = 2.15;
+        head.castShadow = true;
+        group.add(head);
+
+        // 头发
+        const hairGeo = new THREE.SphereGeometry(0.145, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.4);
+        const hairMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.8 });
+        const hair = new THREE.Mesh(hairGeo, hairMat);
+        hair.position.y = 2.16;
+        group.add(hair);
+
+        // 发髻
+        const bunGeo = new THREE.SphereGeometry(0.05, 16, 16);
+        const bun = new THREE.Mesh(bunGeo, hairMat);
+        bun.position.set(0, 2.28, -0.08);
+        group.add(bun);
+
+        // 颈部
+        const neckGeo = new THREE.CylinderGeometry(0.06, 0.07, 0.15, 16);
+        const neck = new THREE.Mesh(neckGeo, skinMat);
+        neck.position.y = 2.0;
+        group.add(neck);
+
+        // 躯干 - 上身
+        const torsoGeo = new THREE.CylinderGeometry(0.16, 0.13, 0.55, 16);
+        const torso = new THREE.Mesh(torsoGeo, costumeRed);
+        torso.position.y = 1.7;
+        torso.castShadow = true;
+        group.add(torso);
+
+        // 金色装饰带
+        const sashGeo = new THREE.CylinderGeometry(0.165, 0.165, 0.12, 16);
+        const sash = new THREE.Mesh(sashGeo, costumeGold);
+        sash.position.y = 1.75;
+        group.add(sash);
+
+        // 腰带
+        const beltGeo = new THREE.CylinderGeometry(0.14, 0.14, 0.08, 16);
+        const belt = new THREE.Mesh(beltGeo, costumeGold);
+        belt.position.y = 1.42;
+        group.add(belt);
+
+        // 下身 - 裤子
+        const hipsGeo = new THREE.CylinderGeometry(0.14, 0.18, 0.35, 16);
+        const hips = new THREE.Mesh(hipsGeo, pantsBlue);
+        hips.position.y = 1.2;
+        hips.castShadow = true;
+        group.add(hips);
+
+        // 左腿（站立支撑）
+        const leftThighGeo = new THREE.CylinderGeometry(0.07, 0.06, 0.45, 12);
+        const leftThigh = new THREE.Mesh(leftThighGeo, pantsBlue);
+        leftThigh.position.set(-0.08, 0.85, 0);
+        leftThigh.castShadow = true;
+        group.add(leftThigh);
+
+        const leftShinGeo = new THREE.CylinderGeometry(0.055, 0.04, 0.5, 12);
+        const leftShin = new THREE.Mesh(leftShinGeo, pantsBlue);
+        leftShin.position.set(-0.08, 0.35, 0);
+        leftShin.castShadow = true;
+        group.add(leftShin);
+
+        // 左脚
+        const leftFootGeo = new THREE.BoxGeometry(0.1, 0.06, 0.18);
+        const leftFoot = new THREE.Mesh(leftFootGeo, skinMat);
+        leftFoot.position.set(-0.08, 0.08, 0.05);
+        group.add(leftFoot);
+
+        // 右腿（抬起弯曲）
+        const rightThighGeo = new THREE.CylinderGeometry(0.07, 0.06, 0.45, 12);
+        const rightThigh = new THREE.Mesh(rightThighGeo, pantsBlue);
+        rightThigh.position.set(0.12, 1.0, 0.1);
+        rightThigh.rotation.z = -0.8;
+        rightThigh.rotation.x = 0.3;
+        rightThigh.castShadow = true;
+        group.add(rightThigh);
+
+        const rightShinGeo = new THREE.CylinderGeometry(0.055, 0.04, 0.45, 12);
+        const rightShin = new THREE.Mesh(rightShinGeo, pantsBlue);
+        rightShin.position.set(0.35, 0.75, 0.25);
+        rightShin.rotation.z = 0.5;
+        rightShin.rotation.x = -0.2;
+        rightShin.castShadow = true;
+        group.add(rightShin);
+
+        // 右脚
+        const rightFootGeo = new THREE.BoxGeometry(0.1, 0.06, 0.18);
+        const rightFoot = new THREE.Mesh(rightFootGeo, skinMat);
+        rightFoot.position.set(0.45, 0.52, 0.35);
+        rightFoot.rotation.y = 0.3;
+        group.add(rightFoot);
+
+        // 左臂（平伸）
+        const leftShoulderGeo = new THREE.SphereGeometry(0.08, 16, 16);
+        const leftShoulder = new THREE.Mesh(leftShoulderGeo, costumeRed);
+        leftShoulder.position.set(-0.22, 1.9, 0);
+        group.add(leftShoulder);
+
+        const leftArmGeo = new THREE.CylinderGeometry(0.045, 0.04, 0.55, 12);
+        const leftArm = new THREE.Mesh(leftArmGeo, costumeRed);
+        leftArm.position.set(-0.5, 1.85, 0);
+        leftArm.rotation.z = Math.PI / 2;
+        leftArm.castShadow = true;
+        group.add(leftArm);
+
+        const leftHandGeo = new THREE.SphereGeometry(0.05, 12, 12);
+        const leftHand = new THREE.Mesh(leftHandGeo, skinMat);
+        leftHand.position.set(-0.8, 1.85, 0);
+        group.add(leftHand);
+
+        // 右臂（上举托碗）
+        const rightShoulderGeo = new THREE.SphereGeometry(0.08, 16, 16);
+        const rightShoulder = new THREE.Mesh(rightShoulderGeo, costumeRed);
+        rightShoulder.position.set(0.22, 1.9, 0);
+        group.add(rightShoulder);
+
+        const rightArmGeo = new THREE.CylinderGeometry(0.045, 0.04, 0.5, 12);
+        const rightArm = new THREE.Mesh(rightArmGeo, costumeRed);
+        rightArm.position.set(0.35, 2.05, 0);
+        rightArm.rotation.z = -0.4;
+        rightArm.castShadow = true;
+        group.add(rightArm);
+
+        const rightForearmGeo = new THREE.CylinderGeometry(0.04, 0.035, 0.45, 12);
+        const rightForearm = new THREE.Mesh(rightForearmGeo, skinMat);
+        rightForearm.position.set(0.5, 2.35, 0);
+        rightForearm.rotation.z = -0.2;
+        group.add(rightForearm);
+
+        const rightHandGeo = new THREE.SphereGeometry(0.05, 12, 12);
+        const rightHand = new THREE.Mesh(rightHandGeo, skinMat);
+        rightHand.position.set(0.58, 2.55, 0);
+        group.add(rightHand);
+
+        // 碗1（手上）
+        const bowl1 = createBowl(0.12, 0.06);
+        bowl1.position.set(0.58, 2.65, 0);
+        bowl1.castShadow = true;
+        group.add(bowl1);
+
+        // 碗2（头顶）
+        const bowl2 = createBowl(0.14, 0.07);
+        bowl2.position.set(0, 2.32, 0);
+        bowl2.castShadow = true;
+        group.add(bowl2);
+
+        // 碗3（最上）
+        const bowl3 = createBowl(0.1, 0.05);
+        bowl3.position.set(0, 2.45, 0);
+        bowl3.castShadow = true;
+        group.add(bowl3);
+
+        // 底座
+        const baseGeo = new THREE.CylinderGeometry(0.35, 0.4, 0.12, 32);
+        const baseMat = new THREE.MeshPhysicalMaterial({
+            color: 0x8b4513, roughness: 0.5, metalness: 0.1
+        });
+        const base = new THREE.Mesh(baseGeo, baseMat);
+        base.position.y = 0.06;
+        base.castShadow = true;
+        group.add(base);
+
+        group.position.y = 0.1;
+        return group;
+    }
+
+    function createBowl(radius, height) {
+        const points = [];
+        for (let i = 0; i <= 16; i++) {
+            const t = i / 16;
+            const r = radius * (0.25 + 0.75 * Math.pow(t, 0.6));
+            points.push(new THREE.Vector2(Math.max(0.005, r), t * height));
+        }
+        const geo = new THREE.LatheGeometry(points, 32);
+        const mat = new THREE.MeshPhysicalMaterial({
+            color: 0xf5f0e8, roughness: 0.15, metalness: 0.02,
+            clearcoat: 0.8, clearcoatRoughness: 0.05
+        });
+        return new THREE.Mesh(geo, mat);
+    }
+
+    // ===== iframe 嵌入容器 =====
+    let currentEmbedContainer = null;
+
+    function showEmbedModel(exhibit) {
+        // 移除之前的 iframe
+        if (currentEmbedContainer) {
+            currentEmbedContainer.remove();
+            currentEmbedContainer = null;
+        }
+
+        // 创建 iframe 容器
+        const container = document.createElement('div');
+        container.className = 'embed-container';
+        
+        // 创建关闭按钮
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'embed-close';
+        closeBtn.innerHTML = '✕';
+        closeBtn.onclick = function() {
+            container.remove();
+            currentEmbedContainer = null;
+        };
+        container.appendChild(closeBtn);
+
+        // 创建 iframe
+        const iframe = document.createElement('iframe');
+        iframe.src = exhibit.embedUrl;
+        iframe.allowFullscreen = true;
+        container.appendChild(iframe);
+
+        document.body.appendChild(container);
+        currentEmbedContainer = container;
+
+        // 更新信息面板
+        updateInfo(exhibit);
+        
+        // 更新按钮状态
+        document.querySelectorAll('.model-btn').forEach((btn, i) => {
+            btn.classList.toggle('active', i === currentIndex);
+        });
+    }
+
+    // ===== 展示模型 =====
+    function showModel(index) {
+        currentIndex = index;
+        const exhibit = exhibits[index];
+
+        // 移除之前的 iframe
+        if (currentEmbedContainer) {
+            currentEmbedContainer.remove();
+            currentEmbedContainer = null;
+        }
+
+        if (currentModelGroup) {
+            scene.remove(currentModelGroup);
+            currentModelGroup = null;
+        }
+
+        // 根据模型类型选择加载方式
+        if (exhibit.isGLB) {
+            loadGLBModel(exhibit);
+        } else if (exhibit.isOBJ) {
+            loadOBJModel(exhibit);
+        } else if (exhibit.isFBX) {
+            loadFBXModel(exhibit);
+        } else if (exhibit.isEmbed) {
+            showEmbedModel(exhibit);
+        } else if (exhibit.modelType === 'dingVase') {
+            currentModelGroup = buildDingVase();
+            finalizeModel(exhibit);
+        } else if (exhibit.buildModel) {
+            currentModelGroup = exhibit.buildModel();
+            finalizeModel(exhibit);
+        }
+    }
+
+    function loadFBXModel(exhibit) {
+        const loader = new THREE.FBXLoader();
+        loader.load(
+            exhibit.modelPath,
+            function(object) {
+                currentModelGroup = object;
+                
+                // 自动缩放和居中
+                const box = new THREE.Box3().setFromObject(currentModelGroup);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+                const maxDim = Math.max(size.x, size.y, size.z);
+                
+                // 缩放至合适大小
+                const targetSize = 3.5;
+                const scale = targetSize / maxDim;
+                currentModelGroup.scale.setScalar(scale);
+                
+                // 居中
+                currentModelGroup.position.x = -center.x * scale;
+                currentModelGroup.position.y = -center.y * scale + size.y * scale / 2;
+                currentModelGroup.position.z = -center.z * scale;
+                
+                // 启用阴影
+                currentModelGroup.traverse((child) => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+                
+                scene.add(currentModelGroup);
+                finalizeModel(exhibit);
+            },
+            function(progress) {
+                console.log('FBX 加载进度:', (progress.loaded / progress.total * 100) + '%');
+            },
+            function(error) {
+                console.error('FBX 加载失败:', error);
+                currentModelGroup = buildFallbackModel();
+                scene.add(currentModelGroup);
+                finalizeModel(exhibit);
+            }
+        );
+    }
+
+    function loadOBJModel(exhibit) {
+        // 直接加载OBJ，不使用MTL，统一使用亮木头材质
+        const loader = new THREE.OBJLoader();
+        loader.load(
+            exhibit.modelPath,
+            function(object) {
+                currentModelGroup = object;
+                
+                // 为所有mesh设置亮木头材质
+                currentModelGroup.traverse((child) => {
+                    if (child.isMesh) {
+                        child.material = new THREE.MeshStandardMaterial({
+                            color: 0xd4a574,
+                            roughness: 0.4,
+                            metalness: 0.05,
+                        });
+                    }
+                });
+                
+                setupAndAddModel(exhibit);
+            },
+            function(progress) {
+                console.log('OBJ 加载进度:', (progress.loaded / progress.total * 100) + '%');
+            },
+            function(error) {
+                console.error('OBJ 加载失败:', error);
+                currentModelGroup = buildFallbackModel();
+                scene.add(currentModelGroup);
+                finalizeModel(exhibit);
+            }
+        );
+    }
+    
+    function loadOBJWithoutMTL(exhibit) {
+        const loader = new THREE.OBJLoader();
+        loader.load(
+            exhibit.modelPath,
+            function(object) {
+                currentModelGroup = object;
+                
+                // 只为没有材质的mesh设置默认材质
+                currentModelGroup.traverse((child) => {
+                    if (child.isMesh && (!child.material || (Array.isArray(child.material) && child.material.length === 0))) {
+                        child.material = new THREE.MeshStandardMaterial({
+                            color: 0xf5f0e8,
+                            roughness: 0.3,
+                            metalness: 0.1
+                        });
+                    }
+                });
+                
+                setupAndAddModel(exhibit);
+            },
+            function(progress) {
+                console.log('OBJ 加载进度:', (progress.loaded / progress.total * 100) + '%');
+            },
+            function(error) {
+                console.error('OBJ 加载失败:', error);
+                currentModelGroup = buildFallbackModel();
+                scene.add(currentModelGroup);
+                finalizeModel(exhibit);
+            }
+        );
+    }
+    
+    function setupAndAddModel(exhibit) {
+        // 自动缩放和居中
+        const box = new THREE.Box3().setFromObject(currentModelGroup);
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        
+        // 缩放至合适大小 - 与其他模型一致
+        const targetSize = 3.5;
+        const scale = targetSize / maxDim;
+        currentModelGroup.scale.setScalar(scale);
+        
+        // 居中 - XZ平面居中
+        currentModelGroup.position.x = -center.x * scale;
+        currentModelGroup.position.z = -center.z * scale;
+        
+        // Y轴位置：从底部开始放置，确保模型站在展台上
+        const bottomY = box.min.y * scale;
+        currentModelGroup.position.y = -bottomY;
+        
+        // 启用阴影
+        currentModelGroup.traverse((child) => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+            }
+        });
+        
+        scene.add(currentModelGroup);
+        finalizeModel(exhibit);
+    }
+
+    function loadGLBModel(exhibit) {
+        const loader = new THREE.GLTFLoader();
+        loader.load(
+            exhibit.modelPath,
+            function(gltf) {
+                currentModelGroup = gltf.scene;
+                
+                // 自动缩放和居中
+                const box = new THREE.Box3().setFromObject(currentModelGroup);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+                const maxDim = Math.max(size.x, size.y, size.z);
+                
+                // 缩放至合适大小
+                const targetSize = 3.5;
+                const scale = targetSize / maxDim;
+                currentModelGroup.scale.setScalar(scale);
+                
+                // 居中 - XZ平面居中，Y轴从底部放置
+                currentModelGroup.position.x = -center.x * scale;
+                currentModelGroup.position.z = -center.z * scale;
+                const bottomY = box.min.y * scale;
+                currentModelGroup.position.y = -bottomY;
+                
+                // 启用阴影
+                currentModelGroup.traverse((child) => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+                
+                scene.add(currentModelGroup);
+                finalizeModel(exhibit);
+            },
+            function(progress) {
+                console.log('加载进度:', (progress.loaded / progress.total * 100) + '%');
+            },
+            function(error) {
+                console.error('GLB 加载失败:', error);
+                // 加载失败时显示占位模型
+                currentModelGroup = buildFallbackModel();
+                scene.add(currentModelGroup);
+                finalizeModel(exhibit);
+            }
+        );
+    }
+
+    function buildFallbackModel() {
+        const group = new THREE.Group();
+        const geo = new THREE.BoxGeometry(1, 1.5, 0.1);
+        const mat = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.castShadow = true;
+        group.add(mesh);
+        return group;
+    }
+
+    function finalizeModel(exhibit) {
+        const box = new THREE.Box3().setFromObject(currentModelGroup);
+        const size = box.getSize(new THREE.Vector3());
+        
+        updateInfo(exhibit);
+
+        document.querySelectorAll('.model-btn').forEach((btn, i) => {
+            btn.classList.toggle('active', i === currentIndex);
+        });
+
+        // 根据展品类型调整视角
+        if (currentIndex === 1) { // 辛集玉雕
+            controls.target.set(0, size.y * 0.4 + currentModelGroup.position.y, 0);
+            camera.position.set(4, 3, 6);
+        } else if (currentIndex === 2) { // 皮影戏 - 取中间位置
+            controls.target.set(0, size.y * 0.3 + currentModelGroup.position.y, 0);
+            camera.position.set(0, 3, 7);
+        } else if (currentIndex === 4) { // 曲阳石雕 - 取中间位置
+            controls.target.set(0, size.y * 0.3 + currentModelGroup.position.y, 0);
+            camera.position.set(0, 3, 7);
+        } else {
+            controls.target.set(0, size.y / 2 + currentModelGroup.position.y, 0);
+            camera.position.set(3, 2.5, 5);
+        }
+        controls.update();
+    }
+
+    function updateInfo(exhibit) {
+        document.getElementById('infoTitle').textContent = exhibit.name;
+        document.getElementById('infoSubtitle').textContent = exhibit.en;
+        document.getElementById('infoDesc').textContent = exhibit.desc;
+        document.getElementById('metaOrigin').textContent = exhibit.origin;
+        document.getElementById('metaCategory').textContent = exhibit.category;
+        document.getElementById('metaBatch').textContent = exhibit.batch;
+        document.getElementById('metaCode').textContent = exhibit.code;
+        document.querySelector('.info-tag').textContent = exhibit.tag;
+    }
+
+    function createButtons() {
+        const panel = document.getElementById('modelPanel');
+        exhibits.forEach((exhibit, i) => {
+            const btn = document.createElement('div');
+            btn.className = 'model-btn' + (i === 0 ? ' active' : '');
+            btn.innerHTML = exhibit.icon + '<span class="tooltip">' + exhibit.name + '</span>';
+            btn.addEventListener('click', () => showModel(i));
+            panel.appendChild(btn);
+        });
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        const delta = clock.getDelta();
+        const elapsed = clock.getElapsedTime();
+
+        if (currentModelGroup) {
+            currentModelGroup.rotation.y += delta * 0.15;
+        }
+
+        if (particleSystem) {
+            const positions = particleSystem.geometry.attributes.position.array;
+            for (let i = 0; i < positions.length; i += 3) {
+                positions[i + 1] += Math.sin(elapsed + i) * 0.001;
+                if (positions[i + 1] > 15) positions[i + 1] = 0;
+            }
+            particleSystem.geometry.attributes.position.needsUpdate = true;
+            particleSystem.rotation.y = elapsed * 0.02;
+        }
+
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    function onResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    init();
+    </script>
+</body>
+</html>
